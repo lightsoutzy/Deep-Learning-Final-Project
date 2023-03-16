@@ -34,7 +34,7 @@ def visualize_dataset(training_data):
 
 # create dataset
 dataset = datasets.ImageFolder(
-    root="/Users/kellyguo/Downloads/tea sickness dataset",
+    root="tea_dataset_merged",
     transform=transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor()

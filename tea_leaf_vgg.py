@@ -3,6 +3,8 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
+# tf.debugging.set_log_device_placement(True)
+
 def get_data_label(dataset):
     data = dataset.unbatch().map(lambda x, y:x)
     labels = dataset.unbatch().map(lambda x, y:y)
@@ -14,21 +16,17 @@ def normalize(image, label):
 
 def augmentation_layers():
     flip = tf.keras.layers.RandomFlip("horizontal_and_vertical") # or "horizontal", "vertical"
-    rotate = tf.keras.layers.RandomRotation(0.2)
-    crop = tf.keras.layers.RandomCrop(256, 256)
     translation = tf.keras.layers.RandomTranslation(height_factor=0.2, width_factor=0.2)
-    rotation = tf.keras.layers.RandomRotation(factor=[0, 1])
-    brightness = tf.keras.layers.RandomBrightness([-0.8, 0.8])
-    contrast = tf.keras.layers.RandomContrast(0.2)
+    rotate = tf.keras.layers.RandomRotation(factor=[0, 1])
+    brightness = tf.keras.layers.RandomBrightness(0.1)
+    contrast = tf.keras.layers.RandomContrast(0.1)
 
     layers = tf.keras.Sequential([
         flip,
         rotate,
-        crop,
-        translation,
-        rotation,
-        brightness,
-        contrast
+        # translation,
+        # brightness,
+        # contrast
     ])
     return layers
 
@@ -49,7 +47,7 @@ def visualize_dataset(training_data, augmentation=None):
         8: 'white spot'
     }
     figure = plt.figure(figsize=(8, 8))
-    cols, rows = 5, 5
+    cols, rows = 2, 2
     for i in range(1, cols * rows + 1):
         sample_idx = np.random.randint(len(training_data), size=(1,)).item()
         if augmentation:
@@ -64,11 +62,11 @@ def visualize_dataset(training_data, augmentation=None):
         plt.imshow(img)
     plt.show()
 
-directory = '/Users/kellyguo/Downloads/tea_dataset_merged'
+directory = 'tea_dataset_merged'
 batch_size = 32
 image_size = (256, 256)
 seed = 42
-epochs = 15
+epochs = 10
 
 train_dataset = tf.keras.preprocessing.image_dataset_from_directory(
     directory,
@@ -104,7 +102,7 @@ test_dataset = val_dataset.take((2*val_batches) // 3)
 val_dataset = val_dataset.skip((2*val_batches) // 3)
 
 augmentation = augmentation_layers()
-visualize_dataset(train_dataset, augmentation)
+# visualize_dataset(train_dataset, augmentation)
 
 train_dataset = train_dataset.map(normalize)
 val_dataset = val_dataset.map(normalize)
@@ -120,6 +118,8 @@ def build_vgg16_raw():
     )
     vgg.trainable = False
     x = tf.keras.layers.Flatten()(vgg.output)
+    # x = tf.keras.layers.Dense(32, activation='relu')(x)
+    # x = tf.keras.layers.Dropout(0.2)(x)
     x = tf.keras.layers.Dense(9, activation='softmax')(x)
     model = tf.keras.Model(inputs=vgg.input, outputs=x)
     model.summary()
@@ -134,9 +134,8 @@ def train(model, train_ds, valid_ts):
     return history
 
 def test(model, test_dataset):
-    imgs, labels = get_data_label(test_dataset)
-    test_loss, test_acc = model.evaluate(x=imgs, y=labels)
-    print(test_loss, test_accuracy)
+    test_loss, test_acc = model.evaluate(test_dataset)
+    print(test_loss, test_acc)
 
 model = build_vgg16_raw()
 model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(), optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'])
