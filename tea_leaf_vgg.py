@@ -66,7 +66,7 @@ directory = 'tea_dataset_merged'
 batch_size = 32
 image_size = (256, 256)
 seed = 42
-epochs = 10
+epochs = 20
 
 train_dataset = tf.keras.preprocessing.image_dataset_from_directory(
     directory,
@@ -125,6 +125,58 @@ def build_vgg16_raw():
     model.summary()
     return model
 
+def build_vgg19_raw():
+    vgg = tf.keras.applications.VGG19(
+        include_top=False,
+        weights="imagenet",
+        input_shape=(256, 256, 3),
+    )
+    vgg.trainable = False
+    x = tf.keras.layers.Flatten()(vgg.output)
+    x = tf.keras.layers.Dense(9, activation='softmax')(x)
+    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model.summary()
+    return model
+
+def build_resnet50():
+    vgg = tf.keras.applications.ResNet50V2(
+        include_top=False,
+        weights="imagenet",
+        input_shape=(256, 256, 3),
+    )
+    vgg.trainable = False
+    x = tf.keras.layers.Flatten()(vgg.output)
+    x = tf.keras.layers.Dense(9, activation='softmax')(x)
+    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model.summary()
+    return model
+
+def build_mobilenetv2():
+    vgg = tf.keras.applications.MobileNetV2(
+        include_top=False,
+        weights="imagenet",
+        input_shape=(256, 256, 3),
+    )
+    vgg.trainable = False
+    x = tf.keras.layers.Flatten()(vgg.output)
+    x = tf.keras.layers.Dense(9, activation='softmax')(x)
+    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model.summary()
+    return model
+
+def build_inception_resnetv2():
+    vgg = tf.keras.applications.InceptionResNetV2(
+        include_top=False,
+        weights="imagenet",
+        input_shape=(256, 256, 3),
+    )
+    vgg.trainable = False
+    x = tf.keras.layers.Flatten()(vgg.output)
+    x = tf.keras.layers.Dense(9, activation='softmax')(x)
+    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model.summary()
+    return model
+
 def train(model, train_ds, valid_ts):
     history = model.fit(train_ds,
         epochs=epochs,
@@ -138,9 +190,14 @@ def test(model, test_dataset):
     print(test_loss, test_acc)
 
 model = build_vgg16_raw()
+# model = build_vgg19_raw()
+# model = build_mobilenetv2()
+# model = build_resnet50()
+# model = build_inception_resnetv2()
+
 model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(), optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'])
 history = train(model, train_dataset, val_dataset)
 test(model, test_dataset)
 
-model.save('vgg16.h5')
+# model.save('vgg19.h5')
 
