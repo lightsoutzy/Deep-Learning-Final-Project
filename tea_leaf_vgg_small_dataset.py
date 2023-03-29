@@ -62,17 +62,17 @@ def visualize_dataset(training_data, augmentation=None):
         plt.imshow(img)
     plt.show()
 
-directory = '../tea_dataset_merged'
+# directory = 'tea_dataset_merged'
 # directory = '../tea_leaf_augmented'
 # directory = '../tea sickness dataset'
 # directory = '../tea_leaf_augmented_500'
 batch_size = 128
 image_size = (256, 256)
 seed = 42
-epochs = 10
+epochs = 25
 
 train_dataset = tf.keras.preprocessing.image_dataset_from_directory(
-    directory,
+    "../tea_sickness_dataset_train",
     labels="inferred",
     label_mode="int",
     class_names=None,
@@ -86,7 +86,7 @@ train_dataset = tf.keras.preprocessing.image_dataset_from_directory(
     crop_to_aspect_ratio=False,
 )
 val_dataset = tf.keras.preprocessing.image_dataset_from_directory(
-    directory,
+    "../tea_sickness_dataset_train",
     labels="inferred",
     label_mode="int",
     class_names=None,
@@ -99,10 +99,21 @@ val_dataset = tf.keras.preprocessing.image_dataset_from_directory(
     subset='validation',
     crop_to_aspect_ratio=False,
 )
-# 2/3 * 0.3 for test, 1.3 * 0.3 for validation
-val_batches = tf.data.experimental.cardinality(val_dataset)
-test_dataset = val_dataset.take((2*val_batches) // 3)
-val_dataset = val_dataset.skip((2*val_batches) // 3)
+test_dataset = tf.keras.preprocessing.image_dataset_from_directory(
+    "../tea_sickness_dataset_test",
+    labels="inferred",
+    label_mode="int",
+    class_names=None,
+    color_mode="rgb",
+    image_size=image_size,
+    shuffle=True,
+    seed=seed,
+    crop_to_aspect_ratio=False,
+)
+# # 2/3 * 0.3 for test, 1.3 * 0.3 for validation
+# val_batches = tf.data.experimental.cardinality(val_dataset)
+# test_dataset = val_dataset.take((2*val_batches) // 3)
+# val_dataset = val_dataset.skip((2*val_batches) // 3)
 
 # augmentation = augmentation_layers()
 # visualize_dataset(train_dataset, augmentation)
@@ -150,7 +161,7 @@ def build_resnet50():
     vgg.trainable = False
     x = tf.keras.layers.MaxPool2D()(vgg.output)
     x = tf.keras.layers.Flatten()(x)
-    x = tf.keras.layers.Dropout(0.1)(x)
+    x = tf.keras.layers.Dropout(0.2)(x)
     x = tf.keras.layers.Dense(9, activation='softmax')(x)
     model = tf.keras.Model(inputs=vgg.input, outputs=x)
     model.summary()
@@ -164,8 +175,8 @@ def build_mobilenetv2():
     )
     vgg.trainable = False
     x = tf.keras.layers.MaxPool2D()(vgg.output)
-    x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dropout(0.1)(x)
+    x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dense(9, activation='softmax')(x)
     model = tf.keras.Model(inputs=vgg.input, outputs=x)
     model.summary()
@@ -202,7 +213,7 @@ model = build_mobilenetv2()
 # model = build_resnet50()
 # model = build_inception_resnetv2()
 
-model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(), optimizer=tf.keras.optimizers.Adam(learning_rate=0.008), metrics=['accuracy'])
+model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(), optimizer=tf.keras.optimizers.Adam(learning_rate=0.01), metrics=['accuracy'])
 history = train(model, train_dataset, val_dataset)
 test(model, test_dataset)
 
