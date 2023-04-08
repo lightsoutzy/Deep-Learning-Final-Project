@@ -5,31 +5,13 @@ import matplotlib.pyplot as plt
 
 # tf.debugging.set_log_device_placement(True)
 
+# utlities for visualizing images
 def get_data_label(dataset):
     data = dataset.unbatch().map(lambda x, y:x)
     labels = dataset.unbatch().map(lambda x, y:y)
     return data, labels
 
-def normalize(image, label):
-    image = tf.cast(image/255.0, tf.float32)
-    return image, label
-
-def augmentation_layers():
-    flip = tf.keras.layers.RandomFlip("horizontal_and_vertical") # or "horizontal", "vertical"
-    translation = tf.keras.layers.RandomTranslation(height_factor=0.2, width_factor=0.2)
-    rotate = tf.keras.layers.RandomRotation(factor=[0, 1])
-    brightness = tf.keras.layers.RandomBrightness(0.1)
-    contrast = tf.keras.layers.RandomContrast(0.1)
-
-    layers = tf.keras.Sequential([
-        flip,
-        rotate,
-        # translation,
-        # brightness,
-        # contrast
-    ])
-    return layers
-
+# utility to inspect images
 def visualize_dataset(training_data, augmentation=None):
     imgs, labels = get_data_label(training_data)
     imgs = list(imgs)
@@ -63,14 +45,14 @@ def visualize_dataset(training_data, augmentation=None):
     plt.show()
 
 directory = '../tea_dataset_merged'
-# directory = '../tea_leaf_augmented'
-# directory = '../tea sickness dataset'
-# directory = '../tea_leaf_augmented_500'
+
+# define hyperparameters
 batch_size = 128
 image_size = (256, 256)
 seed = 42
 epochs = 10
 
+# load training and validation dataset from directory
 train_dataset = tf.keras.preprocessing.image_dataset_from_directory(
     directory,
     labels="inferred",
@@ -99,88 +81,111 @@ val_dataset = tf.keras.preprocessing.image_dataset_from_directory(
     subset='validation',
     crop_to_aspect_ratio=False,
 )
-# 2/3 * 0.3 for test, 1.3 * 0.3 for validation
+# 1/3 * 0.3 for test, 2/3 * 0.3 for validation
 val_batches = tf.data.experimental.cardinality(val_dataset)
-test_dataset = val_dataset.take((2*val_batches) // 3)
-val_dataset = val_dataset.skip((2*val_batches) // 3)
+test_dataset = val_dataset.take((1*val_batches) // 3)
+val_dataset = val_dataset.skip((1*val_batches) // 3)
 
-# augmentation = augmentation_layers()
-# visualize_dataset(train_dataset, augmentation)
+# normalize image data to be 0-1
+def normalize(image, label):
+    image = tf.cast(image/255.0, tf.float32)
+    return image, label
 
+# normalize all train, validation, and test datasets
 train_dataset = train_dataset.map(normalize)
 val_dataset = val_dataset.map(normalize)
 test_dataset = test_dataset.map(normalize)
 
-# train_dataset = train_dataset.map(lambda x, y: (augmentation(x, training=True), y))
-
-def build_vgg16_raw():
-    vgg = tf.keras.applications.VGG16(
+def build_vggl16_raw():
+    pre_model = tf.keras.applications.VGG16(
         include_top=False,
         weights="imagenet",
         input_shape=(256, 256, 3),
     )
-    vgg.trainable = False
-    x = tf.keras.layers.Flatten()(vgg.output)
-    # x = tf.keras.layers.Dense(32, activation='relu')(x)
-    # x = tf.keras.layers.Dropout(0.2)(x)
+    pre_model.trainable = False
+    x = tf.keras.layers.Flatten()(pre_model.output)
     x = tf.keras.layers.Dense(9, activation='softmax')(x)
-    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model = tf.keras.Model(inputs=pre_model.input, outputs=x)
     model.summary()
     return model
 
 def build_vgg19_raw():
-    vgg = tf.keras.applications.VGG19(
+    pre_model = tf.keras.applications.VGG19(
         include_top=False,
         weights="imagenet",
         input_shape=(256, 256, 3),
     )
-    vgg.trainable = False
-    x = tf.keras.layers.Flatten()(vgg.output)
+    pre_model.trainable = False
+    x = tf.keras.layers.Flatten()(pre_model.output)
     x = tf.keras.layers.Dense(9, activation='softmax')(x)
-    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model = tf.keras.Model(inputs=pre_model.input, outputs=x)
     model.summary()
     return model
 
 def build_resnet50():
-    vgg = tf.keras.applications.ResNet50V2(
+    pre_model = tf.keras.applications.ResNet50V2(
         include_top=False,
         weights="imagenet",
         input_shape=(256, 256, 3),
     )
-    vgg.trainable = False
-    x = tf.keras.layers.MaxPool2D()(vgg.output)
-    x = tf.keras.layers.Flatten()(x)
-    x = tf.keras.layers.Dropout(0.1)(x)
+    pre_model.trainable = False
+    x = tf.keras.layers.Flatten()(pre_model.output)
     x = tf.keras.layers.Dense(9, activation='softmax')(x)
-    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model = tf.keras.Model(inputs=pre_model.input, outputs=x)
+    model.summary()
+    return model
+
+def build_mobilenetv2_raw():
+    pre_model = tf.keras.applications.MobileNetV2(
+        include_top=False,
+        weights="imagenet",
+        input_shape=(256, 256, 3),
+    )
+    pre_model.trainable = False
+    x = tf.keras.layers.Flatten()(pre_model.output)
+    x = tf.keras.layers.Dense(9, activation='softmax')(x)
+    model = tf.keras.Model(inputs=pre_model.input, outputs=x)
     model.summary()
     return model
 
 def build_mobilenetv2():
-    vgg = tf.keras.applications.MobileNetV2(
+    pre_model = tf.keras.applications.MobileNetV2(
         include_top=False,
         weights="imagenet",
         input_shape=(256, 256, 3),
     )
-    vgg.trainable = False
-    x = tf.keras.layers.MaxPool2D()(vgg.output)
+    pre_model.trainable = False
+    x = tf.keras.layers.MaxPool2D()(pre_model.output)
     x = tf.keras.layers.Flatten()(x)
     x = tf.keras.layers.Dropout(0.1)(x)
     x = tf.keras.layers.Dense(9, activation='softmax')(x)
-    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model = tf.keras.Model(inputs=pre_model.input, outputs=x)
     model.summary()
     return model
 
 def build_inception_resnetv2():
-    vgg = tf.keras.applications.InceptionResNetV2(
+    pre_model = tf.keras.applications.InceptionResNetV2(
         include_top=False,
         weights="imagenet",
         input_shape=(256, 256, 3),
     )
-    vgg.trainable = False
-    x = tf.keras.layers.Flatten()(vgg.output)
+    pre_model.trainable = False
+    x = tf.keras.layers.Flatten()(pre_model.output)
     x = tf.keras.layers.Dense(9, activation='softmax')(x)
-    model = tf.keras.Model(inputs=vgg.input, outputs=x)
+    model = tf.keras.Model(inputs=pre_model.input, outputs=x)
+    model.summary()
+    return model
+
+def build_efficient_net():
+    pre_model = tf.keras.applications.EfficientNetB0(
+        include_top=False,
+        weights="imagenet",
+        input_shape=(256, 256, 3),
+    )
+    pre_model.trainable = False
+    x = tf.keras.layers.Flatten()(pre_model.output)
+    x = tf.keras.layers.Dense(9, activation='softmax')(x)
+    model = tf.keras.Model(inputs=pre_model.input, outputs=x)
     model.summary()
     return model
 
@@ -201,10 +206,10 @@ def test(model, test_dataset):
 model = build_mobilenetv2()
 # model = build_resnet50()
 # model = build_inception_resnetv2()
+# model = build_efficient_net()
+# model = build_mobilenetv2_raw()
 
 model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(), optimizer=tf.keras.optimizers.Adam(learning_rate=0.008), metrics=['accuracy'])
 history = train(model, train_dataset, val_dataset)
 test(model, test_dataset)
-
-# model.save('vgg19.h5')
 
